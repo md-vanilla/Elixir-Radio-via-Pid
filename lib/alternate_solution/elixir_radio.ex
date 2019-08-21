@@ -37,4 +37,30 @@ defmodule Station do
   def stream do
     Stream.cycle(1..10)
   end
+  # def loop() do
+  #   receive do
+  #   # {:off, msg}  -> radio_list;loop()
+  #   # {:on, msg} -> "won't match" <> " " <> msg |> IO.inspect;loop()
+  #   {_, _msg} -> "reached" |> IO.inspect; loop()
+  #   end
+  # end
+  def station_off_loop do
+    receive do
+      {:on, pid} -> station_on_loop();
+    end
+  end
+
+  def station_on_loop do
+    receive do
+      {:off, pid} -> IO.inspect("exiting 💥"); station_off_loop();
+      {value, pid} -> IO.inspect(["unrecognized message, keep waiting...",value] ); station_on_loop();
+    end
+  end
 end
+
+station_pid       = spawn(fn -> Station.station_on_loop() end)
+_turn_radio_off    = send station_pid, {:off, self()};
+_send_messages_pid = spawn(fn ->
+  Station.stream |> Enum.map(fn chunk -> :timer.sleep(10); send station_pid, {chunk, self()} end)
+end)
+_turn_radio_on = send station_pid, {:start, station_pid}
